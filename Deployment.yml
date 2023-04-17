@@ -1,0 +1,39 @@
+
+stages:
+  - build
+  - test
+  - deploy
+
+# Build stage: Build the Docker image of the Django app
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t pfeapp .
+    - docker push <your-container-registry>/<your-image-name>
+
+# Test stage: Run automated tests on the Docker image and check app response
+test:
+  stage: test
+  image: <your-image-name>
+  script:
+    - pull <your-image-name>
+    - docker run -d -p 8000:8000 <your-image-name>
+    - curl -sSf 172.20.85.1660:8000   # Make an HTTP request to your Django app
+  only:
+    - master   # Test only on the master branch
+
+# Deploy stage: Deploy the Docker image to Kubernetes cluster
+deploy:
+  stage: deploy
+  image: <your-image-name>
+  before_script:
+    - echo "$KUBECONFIG" > kubeconfig.yaml   # Use the Kubernetes configuration provided as environment variable
+    - export KUBECONFIG=kubeconfig.yaml
+  script:
+    - kubectl config set-context --current --namespace=<your-namespace>   # Set the namespace for deployment
+    - kubectl apply -f <path-to-your-kubernetes-manifests>   # Apply the Kubernetes manifests for deployment
+  only:
+    - master   # Deploy only on the master branch
